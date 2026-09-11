@@ -1,0 +1,40 @@
+name: Keep StealthSurf client routing disabled
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  disable-client-routing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disable client-side routing for all subscriptions
+        env:
+          STEALTHSURF_API_KEY: ${{ secrets.STEALTHSURF_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${STEALTHSURF_API_KEY:-}" ]; then
+            echo "STEALTHSURF_API_KEY secret is not configured"
+            exit 1
+          fi
+
+          subscription_ids=(14342 12141 1056 25)
+
+          for id in "${subscription_ids[@]}"; do
+            echo "Disabling client-side routing for subscription ${id}..."
+            curl --fail-with-body --silent --show-error \
+              --request PATCH \
+              "https://api.stealthsurf.net/profile/custom-subscriptions/${id}/xray-template/settings" \
+              --header "Authorization: Bearer ${STEALTHSURF_API_KEY}" \
+              --header "Content-Type: application/json" \
+              --data '{"json_mode":false}'
+            echo
+          done
+
+          echo "Client-side routing is disabled for all configured subscriptions."
